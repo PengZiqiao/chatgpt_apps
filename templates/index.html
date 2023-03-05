@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/theme-chalk.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div id="app">
+        <el-row>
+            <h1>
+                Chat with GPT-3.5-turbo
+            </h1>
+
+        </el-row>
+        <el-row :gutter="20">
+            <!-- left -->
+            <el-col :span="8">
+                <!-- 表单 -->
+                <el-form ref="form" :model="form" :rules="rules" label-position="top">
+
+                    <el-form-item label="System Message">
+                        <el-input placeholder="Enter text. " type="textarea" v-model="form.systemMessage"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="Temperature">
+                        <el-slider v-model="form.temperature" max="1" step="0.1"></el-slider>
+                    </el-form-item>
+
+                    <el-form-item label="Prompt" prop="prompt">
+                        <el-input placeholder="Enter text. " type="textarea" v-model="form.prompt"></el-input>
+                    </el-form-item>
+
+                    <el-row>
+                        <el-button type="primary" round :loading=loading @click="send">Send</el-button>
+                        <el-button round @click="clear_prompts">New Chat</el-button>
+                    </el-row>
+
+                </el-form>
+            </el-col>
+
+            <!-- right -->
+            <el-col :span="16">
+                <!-- 显示聊天记录 -->
+                <div class="chat-list">
+                    <div v-if="form.prompts.length > 0" v-for="item in form.prompts">
+                        <div :class="item.role === 'user' ? 'user-bubble' : 'assistant-bubble'">
+                            <p>
+                                {{ item.role }}:
+                            </p>
+                            <!-- 把content内容作为markdown代码渲染 -->
+                            <div v-html="marked(item.content)"></div>
+                        </div>
+                    </div>
+                    <!-- 等待回复 -->
+                    <div class="assistant-bubble" v-if="loading == true">
+                        <el-skeleton :rows="3" animated />
+                    </div>
+                </div>
+
+                <!-- 无聊天记录 -->
+                <el-empty v-if="form.prompts.length == 0" description="Chat list is empty. "></el-empty>
+
+            </el-col>
+        </el-row>
+    </div>
+
+</body>
+
+<script src="/static/vue.js"></script>
+<script src="/static/element-ui.js"></script>
+<script src="/static/axios.js"></script>
+<script src="/static/marked.js"></script>
+
+<script>
+    new Vue({
+        el: '#app',
+
+        data: function () {
+            return {
+                form: {
+                    // 系统消息
+                    systemMessage: 'You are a helpful assistant.',
+                    // 温度
+                    temperature: 0,
+                    // 提示
+                    prompt: '',
+                    // 聊天记录
+                    prompts: []
+                },
+                // 加载状态
+                loading: false,
+                // 表单验证规则
+                rules: {
+                    prompt: [{ required: true, message: 'Please input prompt. ', trigger: 'blur' }]
+                }
+            }
+        },
+
+        methods: {
+            // 发送消息
+            send: function () {
+                // 验证表单
+                this.$refs['form'].validate((valid) => {
+                    // 如果验证通过
+                    if (valid) {
+                        // prompts增加用户输入
+                        this.form.prompts.push({ role: 'user', content: this.form.prompt });
+                        // 清空form.prompt   
+                        this.form.prompt = '';
+                        // 设置加载状态为true
+                        this.loading = true;
+                        // 滚动到底部
+                        this.$nextTick(() => {
+                            var container = this.$el.querySelector(".chat-list");
+                            container.scrollTop = container.scrollHeight;
+                        });
+                        // 调用后端获取回复并更新prompts
+                        axios
+                            .post('/send', this.form)
+                            .then(response => {
+                                // 取消加载状态
+                                this.loading = false;
+                                // 更新prompts
+                                this.form.prompts.push({ role: 'assistant', content: response.data });
+                            });
+                    }
+                });
+            },
+
+            // 清除聊天记录
+            clear_prompts: function() {
+                this.form.prompts = [];
+                this.form.prompt = '';
+            },
+
+            // 定义 marked 方法
+            marked: function (markdown) {
+                var result = window.marked(markdown);
+                return result;
+            }
+        }
+    })
+</script>
+
+</html>

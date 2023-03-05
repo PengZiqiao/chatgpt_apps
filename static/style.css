@@ -1,0 +1,39 @@
+* {
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+}
+
+#app {
+  width: 80%;
+  margin: auto;
+}
+
+.chat-list {
+  max-height: 450px;
+  overflow-y: scroll;
+}
+
+.user-bubble {
+  background-color: #F2F6FC;
+  padding: 10px 36px 10px 36px;
+  margin: 10px;
+  border-radius: 10px;
+}
+
+.assistant-bubble {
+  border: 2px solid #F2F6FC;
+  padding: 10px 36px 10px 36px;
+  margin: 10px;
+  border-radius: 10px;
+}
+
+pre {
+    font-family: monospace;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: 3px;
+}
+
+code {
+    color: #333;
+}
