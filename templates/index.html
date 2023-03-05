@@ -22,7 +22,29 @@
                 <el-form ref="form" :model="form" :rules="rules" label-position="top">
 
                     <el-form-item label="System Message">
-                        <el-input placeholder="Enter text. " type="textarea" v-model="form.systemMessage"></el-input>
+                        <el-input placeholder="Enter text. " type="textarea" maxlength="100" show-word-limit
+                            v-model="form.systemMessage"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="Few-shot prompting">
+                        <el-card shadow="never">
+                            <!-- fewShotPrompting 为空时，展示提示文字 -->
+                            <p v-if="form.fewShotPrompting.length == 0">
+                                List is empty.
+                            </p>
+                            <!-- fewShotPrompting 不为空时，展示表格数据 -->
+                            <el-table v-if="form.fewShotPrompting.length > 0" :data="form.fewShotPrompting"
+                                height="68px" size="mini" stripe :show-header="false">
+                                <el-table-column prop="content"></el-table-column>
+                            </el-table>
+                            <el-row>
+                                <el-button type="primary" round size="mini"
+                                    @click="dialogVisible = true">Add</el-button>
+                                <el-button v-if="form.fewShotPrompting.length > 0" round size="mini"
+                                    @click="delete_prompting">Delete</el-button>
+                            </el-row>
+
+                        </el-card>
                     </el-form-item>
 
                     <el-form-item label="Temperature">
@@ -30,7 +52,8 @@
                     </el-form-item>
 
                     <el-form-item label="Prompt" prop="prompt">
-                        <el-input placeholder="Enter text. " type="textarea" v-model="form.prompt"></el-input>
+                        <el-input placeholder="Enter text. " type="textarea" maxlength="1500" show-word-limit
+                            v-model="form.prompt"></el-input>
                     </el-form-item>
 
                     <el-row>
@@ -47,7 +70,7 @@
                 <div class="chat-list">
                     <div v-if="form.prompts.length > 0" v-for="item in form.prompts">
                         <div :class="item.role === 'user' ? 'user-bubble' : 'assistant-bubble'">
-                            <p>
+                            <p style="text-transform: capitalize; color: #999;">
                                 {{ item.role }}:
                             </p>
                             <!-- 把content内容作为markdown代码渲染 -->
@@ -65,6 +88,24 @@
 
             </el-col>
         </el-row>
+
+        <el-dialog title="Add Few-shot prompting" :visible.sync="dialogVisible" width="30%">
+            <el-form ref="dialogForm" :model="dialogForm" :rules="rules" label-position="top">
+                <el-form-item label="Example user content" prop="user_content">
+                    <el-input placeholder="Enter text. " type="textarea" maxlength="100" show-word-limit
+                        v-model="dialogForm.user_content"></el-input>
+                </el-form-item>
+                <el-form-item label="Example assistant content" prop="assistant_content">
+                    <el-input placeholder="Enter text. " type="textarea" maxlength="100" show-word-limit
+                        v-model="dialogForm.assistant_content"></el-input>
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="cancel_add">Cancel</el-button>
+                <el-button type="primary" @click="add">OK</el-button>
+            </span>
+        </el-dialog>
+
     </div>
 
 </body>
@@ -83,6 +124,8 @@
                 form: {
                     // 系统消息
                     systemMessage: 'You are a helpful assistant.',
+                    // 少量样本提示
+                    fewShotPrompting: [],
                     // 温度
                     temperature: 0,
                     // 提示
@@ -90,11 +133,23 @@
                     // 聊天记录
                     prompts: []
                 },
+
+                dialogForm: {
+                    // 用户提示内容
+                    user_content: '',
+                    // 助理提示内容
+                    assistant_content: ''
+                },
+
                 // 加载状态
                 loading: false,
+                // 对话框显示
+                dialogVisible: false,
                 // 表单验证规则
                 rules: {
-                    prompt: [{ required: true, message: 'Please input prompt. ', trigger: 'blur' }]
+                    prompt: [{ required: true, message: 'Please input prompt. ', trigger: 'blur' }],
+                    user_content: [{ required: true, message: 'Please input prompt. ', trigger: 'blur' }],
+                    assistant_content: [{ required: true, message: 'Please input prompt. ', trigger: 'blur' }]
                 }
             }
         },
@@ -131,9 +186,44 @@
             },
 
             // 清除聊天记录
-            clear_prompts: function() {
+            clear_prompts: function () {
                 this.form.prompts = [];
                 this.form.prompt = '';
+            },
+
+            // 取消添加Few-shot prompting
+            cancel_add: function () {
+                // 隐藏对话框并清空输入
+                this.dialogVisible = false;
+                this.dialogForm.user_content = '';
+                this.dialogForm.assistant_content = '';
+            },
+
+            // 添加Few-shot prompting
+            add: function () {
+                // 验证表单
+                this.$refs['dialogForm'].validate((valid) => {
+                    // 如果验证通过
+                    if (valid) {
+                        // 添加用户提示内容到 fewShotPrompting 列表中
+                        this.form.fewShotPrompting.push(
+                            { "role": "system", "name": "example_user", "content": this.dialogForm.user_content });
+                        // 添加助理提示内容到 fewShotPrompting 列表中
+                        this.form.fewShotPrompting.push(
+                            { "role": "system", "name": "example_assistant", "content": this.dialogForm.assistant_content });
+                        // 隐藏对话框并清空输入
+                        this.dialogVisible = false;
+                        this.dialogForm.user_content = '';
+                        this.dialogForm.assistant_content = '';
+                    }
+                });
+            },
+
+            // 删除Few-shot prompting最后两项
+            delete_prompting: function () {
+                if (this.form.fewShotPrompting.length >= 2) {
+                    this.form.fewShotPrompting.splice(this.form.fewShotPrompting.length - 2, 2)
+                }
             },
 
             // 定义 marked 方法
